@@ -1,4 +1,4 @@
-#Robots_RL
+# Robots_RL
 Classes for Solo and Talos Robot + Exemple of RL using PPO2 (stableBaseline2).
 https://stable-baselines.readthedocs.io/en/master/modules/ppo2.html
 
@@ -9,7 +9,7 @@ It is a very simple reward that may not work for now, and would require to tune 
 Classes to control Solo and Talos robots in pybullet with a simple PD controller.
 Robots URDF : https://github.com/Gepetto/example-robot-data/tree/master/robots in talos_data and solo_description.
 
-###Variables
+### Variables
 - **PATH_URDF : Path to the URDF file of the robot (You need to set it for each robot).**
 - HIGH_GAINS : Gains and Frequencies of the robots need to be tuned to be used with RL. 
                if False, we use the default gains and frequencies in Gepetto's experiment used with feedforward couples.
@@ -18,7 +18,7 @@ Robots URDF : https://github.com/Gepetto/example-robot-data/tree/master/robots i
                                                  You can test different combination of gains and frequencies with the class test_PD.py
 - FREQUENCY_UPDATE_CONTROL_HZ : Frequency at which we update q_des and v_des on the PD controller. 50 hz is a very low value and we may need to increase it.
                                                  
-###Functions
+### Functions
 - reset() : Reset the robot position/orientation and forces applied on it. The robot's starting configuration is defined by parameters ``_robot_start_pos`` and ```_robot_start_orientation``.
 - moveRobot() : Use the PD controller on the robot for q_des qnd v_des. 
                 Each call of this function runs the PD controller for 1/FREQUENCY_UPDATE_CONTROL_HZ seconds.
