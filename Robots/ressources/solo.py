@@ -7,7 +7,7 @@ import time
 
 PATH_URDF = "/opt/openrobots/share/example-robot-data/robots/solo_description/robots"
 SOLO_NAME = "solo.urdf"      # This is solo8  : 2 motors per leg only and no shoulder
-SOLO_NAME = "solo12.urdf"    # This is solo12 : 2 motors per leg + all shoulders
+#SOLO_NAME = "solo12.urdf"    # This is solo12 : 2 motors per leg + all shoulders
 
 HIGH_GAINS = True
 

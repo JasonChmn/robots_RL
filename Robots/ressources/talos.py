@@ -40,11 +40,11 @@ class Talos:
         # Load terrain
         self.terrain = class_terrain()
         # Robot positon and orientation at init
-        self.robot_start_position    = [0.0, 0.0, 1.09]  # 1.08]
-        self.robot_start_orientation = p.getQuaternionFromEuler([0, 0, 0])
+        self._robot_start_pos    = [0.0, 0.0, 1.09]  # 1.08]
+        self._robot_start_orientation = p.getQuaternionFromEuler([0, 0, 0])
         # Load Talos
         p.setAdditionalSearchPath(PATH_URDF)
-        self._robot_ID = p.loadURDF("talos_reduced.urdf",self.robot_start_position, self.robot_start_orientation, useFixedBase=False)
+        self._robot_ID = p.loadURDF("talos_reduced.urdf",self._robot_start_pos, self._robot_start_orientation, useFixedBase=False)
         # Joints indices
         self.controlled_joints, self.all_joints_names, self.all_joints = self._getcontrolled_joints() # indices of controlled joints
         # Joints bounds : Pos and Vel
@@ -68,8 +68,8 @@ class Talos:
     def reset(self):
         # Reset base
         p.resetBasePositionAndOrientation(self._robot_ID, 
-                                          self.robot_start_position,
-                                          self.robot_start_orientation, 
+                                          self._robot_start_pos,
+                                          self._robot_start_orientation, 
                                           self.client)
         p.resetBaseVelocity(self._robot_ID, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], self.client)
         for i in self.controlled_joints:
@@ -358,9 +358,7 @@ class Talos:
     def _run_test():
         from Robots.ressources.plane import Plane
         robot = Talos(Plane, GUI=True)
-        #talos.printControlledJoints()
         q_des = np.array([0.]*len(robot.controlled_joints))
-        print("Len : ",len(q_des))
         # Default position (crouch)
         q_des = [   0.00000e+00, 6.76100e-03, # Torso
                     0.00000e+00, 0.00000e+00, # Head
@@ -369,7 +367,6 @@ class Talos:
                     0.00000e+00, 0.00000e+00,-4.11354e-01, 8.59395e-01,-4.48041e-01,-1.70800e-03, # Left leg
                     0.00000e+00, 0.00000e+00,-4.11354e-01, 8.59395e-01,-4.48041e-01,-1.70800e-03  # Right leg
                 ]
-        print("Len : ",len(q_des))
         v_des = np.array([0.]*len(robot.controlled_joints))
         i = 0
         counter_reset = 300
