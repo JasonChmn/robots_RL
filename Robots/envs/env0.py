@@ -216,7 +216,7 @@ class Env0(gym.Env):
     @staticmethod
     def _run_test_env():
         env = Env0(GUI=True)
-        action = np.array([0.01]*Env0.action_dim)
+        action = np.array([0.01]*env.action_dim)
         while True:
             obs, reward, done, _ = env.step( action )
             if done:

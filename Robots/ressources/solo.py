@@ -6,8 +6,8 @@ import example_robot_data
 import time
 
 PATH_URDF = "/opt/openrobots/share/example-robot-data/robots/solo_description/robots"
-SOLO_NAME = "solo.urdf"      # This is solo8  : 2 motors per leg only and no shoulder
-#SOLO_NAME = "solo12.urdf"    # This is solo12 : 2 motors per leg + all shoulders
+#SOLO_NAME = "solo.urdf"      # This is solo8  : 2 motors per leg only and no shoulder
+SOLO_NAME = "solo12.urdf"    # This is solo12 : 2 motors per leg + all shoulders
 
 HIGH_GAINS = True
 
@@ -155,7 +155,7 @@ class Solo:
     #                   If we send the command to the robot at 1Khz (dt=1e-3) and send a new "v_des" and "v_mes" at 50hz (dt_controller=1/50=0.02).
     #                   In this function we will send the command : 0.02/1e-3 = 20 times.
     # - real_time : boolean to run the simulation in real time.
-    def moveRobot(self, q_des, v_des, real_time=True, printInfos=True):
+    def moveRobot(self, q_des, v_des, real_time=True, printInfos=False):
         time_simulation = 0.0
         while time_simulation<DT_PD:
             if real_time: 
@@ -219,8 +219,10 @@ class Solo:
     def _run_test():
         from Robots.ressources.plane import Plane
         robot = Solo(Plane, GUI=True)
-        #q_des = np.array([0.05]*len(robot.controlled_joints)) # 0.55 max ?
-        q_des = np.array([0.0, 0.7, -1.4, 0.0, 0.7, -1.4, 0.0, -0.7, 1.4, 0.0, -0.7, 1.4]) # Position default
+        if SOLO_NAME=="solo12.urdf":
+            q_des = np.array([0.0, 0.7, -1.4, 0.0, 0.7, -1.4, 0.0, -0.7, 1.4, 0.0, -0.7, 1.4]) # Position default for solo 12
+        else:
+            q_des = np.array([0.7, -1.4, 0.7, -1.4, -0.7, 1.4, -0.7, 1.4]) # Position default for solo 12
         v_des = np.array([0.]*len(robot.controlled_joints))
         i = 0
         counter_reset = 250
@@ -232,4 +234,3 @@ class Solo:
                 robot.reset()
                 i=0
         pass
-    

@@ -73,6 +73,7 @@ def play(path_model=None):
 
 
 if __name__ == "__main__":
+    #Env0._run_test_env()
     #Env0._run_test_solo()
     #Env0._run_test_talos()
     TRAIN = False
