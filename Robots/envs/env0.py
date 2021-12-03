@@ -211,7 +211,7 @@ class Env0(gym.Env):
             return (delta2 * (value - input_bounds[0]) / delta1) + output_bounds[0]
 
 
-    # ======================================= TEST
+    # ======================================= CLASSES TEST
 
     @staticmethod
     def _run_test_env():
@@ -234,4 +234,18 @@ class Env0(gym.Env):
     def _run_test_solo():
         from Robots.ressources.solo import Solo
         Solo._run_test()
+        pass
+
+    # ======================================= OTHER TESTS
+
+    @staticmethod
+    def _run_test_reset_solo():
+        from Robots.ressources.solo import Solo
+        Solo._run_test_reset()
+        pass
+
+    @staticmethod
+    def _run_test_reset_talos():
+        from Robots.ressources.talos import Talos
+        Talos._run_test_reset()
         pass

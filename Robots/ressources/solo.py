@@ -234,3 +234,44 @@ class Solo:
                 robot.reset()
                 i=0
         pass
+
+    @staticmethod
+    def _run_test_reset():
+        from Robots.ressources.plane import Plane
+        robot = Solo(Plane, GUI=True)
+        if SOLO_NAME=="solo12.urdf":
+            q_des = np.array([0.0, 0.7, -1.4, 0.0, 0.7, -1.4, 0.0, -0.7, 1.4, 0.0, -0.7, 1.4]) # Position default for solo 12
+        else:
+            q_des = np.array([0.7, -1.4, 0.7, -1.4, -0.7, 1.4, -0.7, 1.4]) # Position default for solo 12
+        v_des = np.array([0.]*len(robot.controlled_joints))
+        i = 0
+        counter_reset = 20
+        max_tab_check = 15
+        tab_states = []
+        while True:
+            # Test configs
+            if len(tab_states)<max_tab_check:
+                q, v = robot.getJointsState()
+                tab_states.append(q+v)
+            else:
+                if i<max_tab_check:
+                    q, v = robot.getJointsState()
+                    state = q+v
+                    same = True
+                    for j,value_original in enumerate(tab_states[i]):
+                        if state[j]!=value_original:
+                            same=False
+                            break
+                    if not same:
+                        print("s bef : ",tab_states[i])
+                        print("s aft : ",state)
+                        input("Not same ...")
+            # move robot
+            robot.moveRobot(q_des, v_des, real_time=True)
+            # Reset
+            i+=1
+            print(i,"/",counter_reset)
+            if i%counter_reset==0: 
+                robot.reset()
+                i=0
+        pass

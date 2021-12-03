@@ -47,12 +47,18 @@ class Talos:
         self._robot_ID = p.loadURDF("talos_reduced.urdf",self._robot_start_pos, self._robot_start_orientation, useFixedBase=False)
         # Joints indices
         self.controlled_joints, self.all_joints_names, self.all_joints = self._getcontrolled_joints() # indices of controlled joints
+        self.non_controlled_joints_to_reset = [21,38] # gripper_left_joint and gripper_right_joint
         # Joints bounds : Pos and Vel
         self.joints_bound_pos_all, self.joints_bound_vel_all = self._getJointsLimitPosVel(self.all_joints)   # Limit of all joints Pos and Vel   
         self.joints_bound_pos, self.joints_bound_vel = self._getJointsLimitPosVel(self.controlled_joints)    # Limit of controlled joints Pos and Vel
         # Gains PD of all joints
         self.gains_P, self.gains_D                       = self._getGainsPD(self.all_joints)
         self.gains_P_controlled, self.gains_D_controlled = self._getGainsPD(self.controlled_joints)
+        # Set motors control
+        no_action = [0.0 for m in self.controlled_joints]
+        p.setJointMotorControlArray(self._robot_ID, jointIndices = self.controlled_joints, controlMode = p.VELOCITY_CONTROL, 
+                                    targetVelocities = no_action, forces = no_action)
+        p.setJointMotorControlArray (self._robot_ID, jointIndices = self.controlled_joints, controlMode = p.TORQUE_CONTROL, forces = no_action)
         # Reset robot
         self.reset()
         # - printInfos
@@ -72,13 +78,12 @@ class Talos:
                                           self._robot_start_orientation, 
                                           self.client)
         p.resetBaseVelocity(self._robot_ID, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], self.client)
+        # Reset joints
         for i in self.controlled_joints:
             p.resetJointState(self._robot_ID, i, 0.0, 0.0, self.client)
-        # Reset motors
-        no_action = [0.0 for m in self.controlled_joints]
-        p.setJointMotorControlArray(self._robot_ID, jointIndices = self.controlled_joints, controlMode = p.VELOCITY_CONTROL, 
-                                    targetVelocities = no_action, forces = no_action)
-        p.setJointMotorControlArray (self._robot_ID, jointIndices = self.controlled_joints, controlMode = p.TORQUE_CONTROL, forces = no_action)
+        # For this robot, we do not control the grippers, but we need to reset it
+        for i in self.non_controlled_joints_to_reset:
+            p.resetJointState(self._robot_ID, i, 0.0, 0.0, self.client)
         pass
 
 
@@ -240,7 +245,7 @@ class Talos:
             "wrist_left_ft_joint",  # LEFT GRIPPER
             "wrist_left_tool_joint",
             "gripper_left_base_link_joint",
-            "gripper_left_joint",
+            "gripper_left_joint", # This is controllable
             "gripper_left_inner_double_joint",
             "gripper_left_fingertip_1_joint",
             "gripper_left_fingertip_2_joint",
@@ -250,7 +255,7 @@ class Talos:
             "wrist_right_ft_joint",  # RIGHT GRIPPER
             "wrist_right_tool_joint",
             "gripper_right_base_link_joint",
-            "gripper_right_joint",
+            "gripper_right_joint", # This is controllable
             "gripper_right_inner_double_joint",
             "gripper_right_fingertip_1_joint",
             "gripper_right_fingertip_2_joint",
@@ -371,7 +376,7 @@ class Talos:
         i = 0
         counter_reset = 300
         while True:
-            robot.moveRobot(q_des, v_des, real_time=True, printInfos=True)
+            robot.moveRobot(q_des, v_des, real_time=True, printInfos=False)
             i+=1
             print(i,"/",counter_reset)
             if i%counter_reset==0: 
@@ -379,3 +384,54 @@ class Talos:
                 i=0
     
 
+
+    @staticmethod
+    def _run_test_reset():
+        from Robots.ressources.plane import Plane
+        robot = Talos(Plane, GUI=True)
+        q_des = np.array([0.]*len(robot.controlled_joints))
+        # Default position (crouch)
+        q_des = [   0.00000e+00, 6.76100e-03, # Torso
+                    0.00000e+00, 0.00000e+00, # Head
+                    2.58470e-01,1.73046e-01,-2.00000e-04,-5.25366e-01,0.00000e+00,0.00000e+00,1.00000e-01, # Left arm
+                    -2.58470e-01,-1.73046e-01, 2.00000e-04,-5.25366e-01, 0.00000e+00, 0.00000e+00, 1.00000e-01, # Right arm
+                    0.00000e+00, 0.00000e+00,-4.11354e-01, 8.59395e-01,-4.48041e-01,-1.70800e-03, # Left leg
+                    0.00000e+00, 0.00000e+00,-4.11354e-01, 8.59395e-01,-4.48041e-01,-1.70800e-03  # Right leg
+                ]
+        v_des = np.array([0.]*len(robot.controlled_joints))
+        i = 0
+        counter_reset = 100
+        max_tab_check = 15
+        tab_states = []
+        while True:
+            # Test configs
+            if len(tab_states)<max_tab_check:
+                q, v = robot.getJointsState()
+                tab_states.append(q+v)
+            else:
+                if i<max_tab_check:
+                    q, v = robot.getJointsState()
+                    state = q+v
+                    same = True
+                    for j,value_original in enumerate(tab_states[i]):
+                        index = j
+                        if state[index]!=value_original:
+                            print("different : ",robot.all_joints_names[index%len(q)])
+                            same=False
+                            input("...")
+                    if not same:
+                        print("Last different:")
+                        print("  q: ",q)
+                        print("   : ",tab_states[i][0:len(q)])
+                        print("  v: ",v)
+                        print("   : ",tab_states[i][len(q):-1])
+                        input("Not same ...")
+            # Move robot
+            robot.moveRobot(q_des, v_des, real_time=True, printInfos=False)
+            # Reset
+            i+=1
+            print(i,"/",counter_reset)
+            if i%counter_reset==0: 
+                robot.reset()
+                i=0
+        pass

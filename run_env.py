@@ -73,9 +73,15 @@ def play(path_model=None):
 
 
 if __name__ == "__main__":
+    # Basic tests
     #Env0._run_test_env()
     #Env0._run_test_solo()
     #Env0._run_test_talos()
+    # Other tests
+    #Env0._run_test_reset_solo()
+    #Env0._run_test_reset_talos()
+    
+    # Train or play
     TRAIN = False
     if TRAIN:
         train()
