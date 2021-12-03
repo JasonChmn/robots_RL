@@ -38,6 +38,7 @@ The code to run the RL algorithm: to learn a new policy and play it can be found
 The hyperparameters used for PPO need to be tuned.
 
 ## Solo
+This test can be run with ``Env0._run_test_solo``
 ```
 import numpy as np
 from Robots.ressources.solo import Solo
@@ -57,6 +58,7 @@ while True:
 ```
 
 ## Talos
+This test can be run with ``Env0._run_test_talos``
 ```
 import numpy as np
 From Robots.ressources.talos import Talos
@@ -83,6 +85,7 @@ while True:
 ```
 
 ## Env0
+This test can be run with ``Env0._run_test_env``.
 ```
 import numpy as np
 from Robots.envs.env0 import Env0
