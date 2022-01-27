@@ -10,12 +10,10 @@ if NAME_ROBOT=="talos":
     from Robots.ressources.talos import Talos as Robot
     HEIGHT_ROOT = 1.0   # Height of the robot when standing
     TRESHOLD_DEAD = [HEIGHT_ROOT-0.3, 2.0]  # Episode is over if the robot goes lower or higher
-    DIVIDE_ACTION_POS_VALUE = 1.
 elif NAME_ROBOT=="solo":
     from Robots.ressources.solo import Solo   as Robot
     HEIGHT_ROOT = 0.23  # Height of the robot when standing
     TRESHOLD_DEAD = [HEIGHT_ROOT-0.08, 0.6] # Episode is over if the robot goes lower or higher
-    DIVIDE_ACTION_POS_VALUE = 2.0 # In URDF, it's [-10,10] radians
 else:
     input("Error, name of the robot not defined ...")
 
@@ -187,7 +185,7 @@ class Env0(gym.Env):
         number_controlled_joints = len(self.robot.controlled_joints)
         # unnormalize q_des
         for i in range(0,number_controlled_joints):
-            action[i] = Env0._rescale( action[i], [-1,1], self.robot.joints_bound_pos[i] ) / DIVIDE_ACTION_POS_VALUE
+            action[i] = Env0._rescale( action[i], [-1,1], self.robot.joints_bound_pos[i] )
         # if activated, unnormalize v_des
         if not Q_DESIRED_ONLY:
             for i in range(0,number_controlled_joints):
@@ -222,19 +220,19 @@ class Env0(gym.Env):
             if done:
                 input("Press to restart ...")
                 env.reset()
-        pass
+        return None
     
     @staticmethod
     def _run_test_talos():
         from Robots.ressources.talos import Talos
         Talos._run_test()
-        pass
+        return None
 
     @staticmethod
     def _run_test_solo():
         from Robots.ressources.solo import Solo
         Solo._run_test()
-        pass
+        return None
 
     # ======================================= OTHER TESTS
 
@@ -242,10 +240,16 @@ class Env0(gym.Env):
     def _run_test_reset_solo():
         from Robots.ressources.solo import Solo
         Solo._run_test_reset()
-        pass
+        return None
 
     @staticmethod
     def _run_test_reset_talos():
         from Robots.ressources.talos import Talos
         Talos._run_test_reset()
-        pass
+        return None
+
+    @staticmethod
+    def _run_test_joints_solo():
+        from Robots.ressources.solo import Solo
+        Solo._run_test_joints_limit()
+        return None

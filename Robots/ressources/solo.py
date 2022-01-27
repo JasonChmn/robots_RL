@@ -9,22 +9,26 @@ PATH_URDF = "/opt/openrobots/share/example-robot-data/robots/solo_description/ro
 #SOLO_NAME = "solo.urdf"      # This is solo8  : 2 motors per leg only and no shoulder
 SOLO_NAME = "solo12.urdf"    # This is solo12 : 2 motors per leg + all shoulders
 
-HIGH_GAINS = True
+HIGH_GAINS = False
+
+FORCE_CONTROLLED_JOINTS_BOUND = True
+
+MAX_TORQUES = 8.0
 
 if HIGH_GAINS:
-    FREQUENCY_TALOS_HZ  = 5000          # 5 khz
-    DT = 1/FREQUENCY_TALOS_HZ
+    FREQUENCY_SOLO_HZ  = 5000           # 5 khz
+    DT = 1/FREQUENCY_SOLO_HZ
     FREQUENCY_UPDATE_CONTROL_HZ  = 50   # 50hz
     DT_PD = 1/FREQUENCY_UPDATE_CONTROL_HZ
-    GAINS_P_ALL = 40.0  # Gains are the same for every joints
-    GAINS_D_ALL = 1.0
+    GAINS_P_ALL = 15.0  # Gains are the same for every joints
+    GAINS_D_ALL = 0.3
 else:
-    FREQUENCY_TALOS_HZ  = 1000          # 1khz
-    DT = 1/FREQUENCY_TALOS_HZ
+    FREQUENCY_SOLO_HZ  = 1000           # 1khz
+    DT = 1/FREQUENCY_SOLO_HZ
     FREQUENCY_UPDATE_CONTROL_HZ  = 50   # 50hz
     DT_PD = 1/FREQUENCY_UPDATE_CONTROL_HZ
     GAINS_P_ALL = 3.0  # Gains are the same for every joints
-    GAINS_D_ALL = 0.2
+    GAINS_D_ALL = 0.07
 
 class Solo:
 
@@ -60,6 +64,21 @@ class Solo:
         self.all_joints_name = [p.getJointInfo(self._robot_ID, i)[1].decode() for i in range(p.getNumJoints(self._robot_ID))] # Name of all joints
         self.all_joints   = [i for i in range(p.getNumJoints(self._robot_ID))] # Indices of all joints
         self.controlled_joints = [i for (i, n) in enumerate(self.all_joints_name) if n not in non_controlled_joints] # Indices of controlled joints
+        # Force controlled joints bound
+        _HAA_bounds = [-1,1]
+        _HFE_bounds = [-1.5,1.5]
+        _KFE_front_bounds = [-2.5,0.5]
+        _KFE_back_bounds  = [-0.5,2.5]
+        if SOLO_NAME=="solo12.urdf":
+            self.controlled_joints_bound = [_HAA_bounds, _HFE_bounds,_KFE_front_bounds,
+                                            _HAA_bounds, _HFE_bounds,_KFE_front_bounds,
+                                            _HAA_bounds, _HFE_bounds,_KFE_back_bounds,
+                                            _HAA_bounds, _HFE_bounds,_KFE_back_bounds ]
+        else:
+            self.controlled_joints_bound = [_HFE_bounds,_KFE_front_bounds,
+                                            _HFE_bounds,_KFE_front_bounds,
+                                            _HFE_bounds,_KFE_back_bounds,
+                                            _HFE_bounds,_KFE_back_bounds ]
         # - Gains
         self.gains_P = [GAINS_P_ALL]*len(self.controlled_joints)
         self.gains_D = [GAINS_D_ALL]*len(self.controlled_joints)
@@ -69,8 +88,10 @@ class Solo:
         # Reset robot
         self.reset()
         # - printInfos
-        print("=== TALOS CREATED")
+        print("=== SOLO CREATED")
         print("Number of controlled_joints : ",len(self.controlled_joints)," / ",len(self.all_joints))
+        # Options (to delete)
+        self.info_max_torques = 0.0
         pass
 
     def __del__(self):
@@ -163,6 +184,8 @@ class Solo:
             # Compute torques
             q_mes, v_mes = self._getJointsState(self.controlled_joints)
             torques = self._computePDTorques(np.array(q_des), np.array(q_mes), np.array(v_des), np.array(v_mes)).tolist()
+            #for t in torques:
+            #    if t>self.info_max_torques: self.info_max_torques=t
             if printInfos:
                 print("------")
                 print("q_mes: ",np.round(q_mes,4))
@@ -192,6 +215,7 @@ class Solo:
     # - torques : torques to apply on joints
     def _computePDTorques(self, q_des, q_mes, v_des, v_mes):
         torques = self.gains_P * (q_des - q_mes) + self.gains_D * (v_des - v_mes)
+        torques = np.array([min(t,MAX_TORQUES) for t in torques])
         return torques
 
 
@@ -207,11 +231,17 @@ class Solo:
         return q_mes, v_mes
 
     def _getJointsLimitPosVel(self, joints_indices):
+        print("===")
         joints_bound_pos, joints_bound_vel = [], []
         for i in joints_indices:
             info = p.getJointInfo(self._robot_ID, i)
-            joints_bound_pos.append([info[8], info[9]]) # Pos
+            if FORCE_CONTROLLED_JOINTS_BOUND and i in self.controlled_joints:
+                joints_bound_pos.append( self.controlled_joints_bound[ self.controlled_joints.index(i) ] )
+            else:
+                joints_bound_pos.append([info[8], info[9]]) # Pos
             joints_bound_vel.append([-info[11],info[11]])   # Vel
+        #for j in joints_bound_pos: print(j)
+        #input("...")
         return joints_bound_pos, joints_bound_vel
 
 
@@ -274,4 +304,49 @@ class Solo:
             if i%counter_reset==0: 
                 robot.reset()
                 i=0
+        pass
+
+    @staticmethod
+    def _run_test_joints_limit():
+        from Robots.ressources.plane import Plane
+        robot = Solo(Plane, GUI=True)
+        # Move robot to default position
+        if SOLO_NAME=="solo12.urdf":
+            q_des = np.array([0.0, 0.7, -1.4, 0.0, 0.7, -1.4, 0.0, -0.7, 1.4, 0.0, -0.7, 1.4]) # Position default for solo 12
+        else:
+            q_des = np.array([0.7, -1.4, 0.7, -1.4, -0.7, 1.4, -0.7, 1.4]) # Position default for solo 9
+        v_des = np.array([0.]*len(robot.controlled_joints))
+        i = 0
+        counter = 50
+        done = False
+        while not done:
+            robot.moveRobot(q_des, v_des, real_time=True)
+            i+=1
+            if i%counter==0:
+                done = True
+        # Test bounds of each joint
+        input("Start test for each joint ... (press key)")
+        for index_joint, bound in enumerate(robot.joints_bound_pos):
+            print("==== Joint ",index_joint," : ")
+            for j in range(2): # Min and Max
+                value = bound[j]
+                print("value tested = ",value)
+                q_des_aux = q_des.copy()
+                q_des_aux[index_joint] = value
+                i = 0
+                done = False
+                while not done:
+                    robot.moveRobot(q_des_aux, v_des, real_time=True)
+                    i+=1
+                    if i%counter==0:
+                        done = True
+                        input("Press key...")
+                # Reset to default position
+                i = 0
+                done = False
+                while not done:
+                    robot.moveRobot(q_des, v_des, real_time=True)
+                    i+=1
+                    if i%counter==0:
+                        done = True
         pass

@@ -22,6 +22,7 @@ plt.figure()
 plt.plot(t[1:], ylist)
 plt.show()"""
 
+
 N = 1000
 x = 0.0
 dx = 0.0
@@ -29,8 +30,9 @@ ddx = 0.0
 dt = 0.0005
 #dt = 0.001
 I = 0.0000045
-Kp = 100
-Kd = 20.
+Kp = 40
+Kd = 1.
+
 
 y = [0.0] * N
 for i in range(N):

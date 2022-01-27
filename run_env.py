@@ -38,8 +38,8 @@ def train():
         envVec = SubprocVecEnv(env, start_method='spawn')
     print("=========== Create model")
     model = PPO2(MlpPolicy, envVec, verbose=1, tensorboard_log="./tensorboard/",
-                 n_steps=1024, nminibatches=64, noptepochs=10, cliprange=0.2, learning_rate=1.0e-4,
-                 gamma=0.99)
+                 n_steps=2048, nminibatches=64, noptepochs=10, cliprange=0.2, learning_rate=1.0e-4,
+                 gamma=0.98)
     print("=========== Create callback")
     checkpoint_callback = CheckpointCallback(save_freq=10000, save_path='./logs/',
                                              name_prefix="model_")
@@ -53,19 +53,18 @@ def train():
 def play(path_model=None):
     env = Env0(GUI=True)
     envVec = DummyVecEnv([lambda: env])
-    model = PPO2(MlpPolicy, envVec, verbose=1, tensorboard_log="./tensorboard/",
-                 n_steps=2048, nminibatches=64, noptepochs=10, cliprange=0.2, learning_rate=1.0e-4,
-                 gamma=0.99)
+    model = PPO2(MlpPolicy, envVec)
     if path_model is not None:
         model.load(path_model, env=envVec, policy=MlpPolicy)
     obs = env.reset()
     counter, max_counter = 0, 200
     while True:
-        action, _states  = model.predict(obs, deterministic=False)
-        print(counter," - action: ",action)
+        action, _states  = model.predict(obs, deterministic=True)
+        print(counter," - action: ",[round(a,4) for a in action])
         counter+=1
         obs, reward, done, _ = env.step( action )
         if done or counter>max_counter:
+            #print("Max torques : ",env.robot.max_torques)
             input("Press to restart ...")
             env.reset()
             counter = 0
@@ -80,11 +79,12 @@ if __name__ == "__main__":
     # Other tests
     #Env0._run_test_reset_solo()
     #Env0._run_test_reset_talos()
+    #Env0._run_test_joints_solo()
     
     # Train or play
     TRAIN = False
     if TRAIN:
         train()
     else:
-        #model_name = "/devel/hpp/src/robots_RL/logs/model__2000000_steps"
+        model_name = "/devel/hpp/src/robots_RL/logs/model__1360000_steps"
         play(model_name)
