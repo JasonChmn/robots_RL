@@ -9,6 +9,9 @@ PATH_URDF = "/opt/openrobots/share/example-robot-data/robots/talos_data/robots"
 
 HIGH_GAINS = True
 
+MAX_TORQUES = 300. # Knee 300, Legs 160-200, Shoulder 22-44, 
+DIVIDE_BOUNDS_TORQUES = 8.0 # Used when control in torques, lower the torques bounds for controlled joints => To tune
+
 if HIGH_GAINS:
     FREQUENCY_TALOS_HZ  = 2000          # 5 khz
     DT = 1/FREQUENCY_TALOS_HZ
@@ -54,6 +57,8 @@ class Talos:
         # Gains PD of all joints
         self.gains_P, self.gains_D                       = self._getGainsPD(self.all_joints)
         self.gains_P_controlled, self.gains_D_controlled = self._getGainsPD(self.controlled_joints)
+        # Controlled joints bounds : torques
+        self.joints_bound_torques = self._get_max_torques_joints(self.controlled_joints)
         # Set motors control
         no_action = [0.0 for m in self.controlled_joints]
         p.setJointMotorControlArray(self._robot_ID, jointIndices = self.controlled_joints, controlMode = p.VELOCITY_CONTROL, 
@@ -126,6 +131,46 @@ class Talos:
                     pass
         pass
 
+    def moveRobot_torques(self, torques, real_time=True, printInfos=False):
+        time_simulation = 0.0
+        if printInfos:
+            print("torques : ",np.round(torques,1))
+        # "Constant torques are applied for the duration of a control step" as in : https://arxiv.org/pdf/1611.01055.pdf
+        while time_simulation<DT_PD:
+            if real_time: 
+                t_start = time.time()
+            # Apply torques on robot
+            p.setJointMotorControlArray(self._robot_ID, self.controlled_joints,
+                                        controlMode=p.TORQUE_CONTROL, forces=torques) # There is another function if we run it on the real robot.
+            #q_mes, v_mes = self._getJointsState(self.controlled_joints)
+            # Increment time
+            time_simulation += DT
+            # Run simulation
+            p.stepSimulation()
+            # Wait if real time
+            if real_time:
+                while (time.time() - t_start) < DT:
+                    pass
+        return None
+
+    # ============================================================================================
+
+    # Get max torques possible for each joint. We do not consider joints velocity.
+    # Formula : torques =
+    def _get_max_torques_joints(self, joint_indices):
+        # Compute list of torques from min to max joint positions
+        min_pos_joints = [ self.joints_bound_pos_all[i][0] for i in joint_indices ]
+        max_pos_joints = [ self.joints_bound_pos_all[i][1] for i in joint_indices ]
+        null_values = [ 0. for _ in joint_indices ]
+        max_torques = self._computePDTorques(np.array(min_pos_joints), np.array(max_pos_joints), 
+                                             np.array(null_values), np.array(null_values)
+                                            ).tolist()
+        # Compute torques bounds
+        joints_bound_torques = []
+        for i in range(len(joint_indices)):
+            joints_bound_torques.append( [-max_torques[i]/DIVIDE_BOUNDS_TORQUES, max_torques[i]/DIVIDE_BOUNDS_TORQUES] )
+        return joints_bound_torques
+
     # ================================================================
 
     # - All joints
@@ -197,8 +242,9 @@ class Talos:
     # @output
     # - torques : torques to apply on joints
     def _computePDTorques(self, q_des, q_mes, v_des, v_mes):
-        tau_pd = self.gains_P_controlled * (q_des - q_mes) * MULTIPLY_ALL_GAINS_P + self.gains_D_controlled * (v_des - v_mes) * MULTIPLY_ALL_GAINS_D
-        return tau_pd
+        torques = self.gains_P_controlled * (q_des - q_mes) * MULTIPLY_ALL_GAINS_P + self.gains_D_controlled * (v_des - v_mes) * MULTIPLY_ALL_GAINS_D
+        torques = np.array([min(t,MAX_TORQUES) for t in torques])
+        return torques
 
 
     # ===================================================================================================================
