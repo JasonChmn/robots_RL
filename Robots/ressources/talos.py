@@ -198,6 +198,9 @@ class Talos:
     def getControlledJointsBounds(self):
         q_bounds, v_bounds = self.joints_bound_pos, self.joints_bound_vel
         return q_bounds, v_bounds
+    # Get joints bound : Torques
+    def getControlledJointsTorquesBounds(self):
+        return self.joints_bound_torques
 
     # - Base
     # Get position and orientation of the base of the robot.

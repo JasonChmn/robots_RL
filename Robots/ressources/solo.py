@@ -144,7 +144,7 @@ class Solo:
     def getControlledJointsBounds(self):
         q_bounds, v_bounds = self.joints_bound_pos, self.joints_bound_vel
         return q_bounds, v_bounds
-    # Get joints bbound : Torques
+    # Get joints bound : Torques
     def getControlledJointsTorquesBounds(self):
         return self.joints_bound_torques
 
