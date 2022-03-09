@@ -9,14 +9,15 @@ PATH_URDF = "/opt/openrobots/share/example-robot-data/robots/solo_description/ro
 SOLO_NAME = "solo.urdf"      # This is solo8  : 2 motors per leg only and no shoulder
 #SOLO_NAME = "solo12.urdf"    # This is solo12 : 2 motors per leg + all shoulders
 
-HIGH_GAINS = False
+HIGH_GAINS = False # Two setup for GAINS. The high gains are the one used by Gepetto team. But in RL, we have to lower it (keep False) => To tune.
 
-FORCE_CONTROLLED_JOINTS_BOUND = True
+FORCE_CONTROLLED_JOINTS_BOUND = True # False: use bounds from URDF ~[-10*pi,10*pi] / True: Lower these bounds for RL (Keep True).
 
-MAX_TORQUES = 8.0
-DIVIDE_BOUNDS_TORQUES = 3.0 # Used when control in torques, lower the torques bounds for controlled joints => To tune
+MAX_TORQUES = 8.0 # Set a maximum value for torques => Value to tune.
+DIVIDE_BOUNDS_TORQUES = 3.0 # Used with torque control, lower the bounds of torques for controlled joints => Value to tune.
 
 if HIGH_GAINS:
+    # Parameters used in GEPETTO
     FREQUENCY_SOLO_HZ  = 5000           # 5 khz
     DT = 1/FREQUENCY_SOLO_HZ
     FREQUENCY_UPDATE_CONTROL_HZ  = 50   # 50hz
@@ -24,6 +25,7 @@ if HIGH_GAINS:
     GAINS_P_ALL = 15.0  # Gains are the same for every joints
     GAINS_D_ALL = 0.3
 else:
+    # Parameters used for RL
     FREQUENCY_SOLO_HZ  = 1000           # 1khz
     DT = 1/FREQUENCY_SOLO_HZ
     FREQUENCY_UPDATE_CONTROL_HZ  = 50   # 50hz
@@ -42,7 +44,7 @@ class Solo:
     
     """
 
-    def __init__(self, class_terrain, GUI=False):
+    def __init__(self, class_terrain, GUI=False, useFixedBase=False):
         # Client : GUI (Graphical User Interface to check your results) / SHARED_MEMORY (for training with multiprocessing)
         if GUI:
             self.client = p.connect(p.GUI)
@@ -54,17 +56,15 @@ class Solo:
         self._robot_start_pos = [0,0,0.5]
         self._robot_start_orientation = p.getQuaternionFromEuler([0,0,0])
         p.setAdditionalSearchPath(PATH_URDF)
-        self._robot_ID = p.loadURDF(SOLO_NAME, self._robot_start_pos, self._robot_start_orientation, useFixedBase=False)
-        # Parameters
-        # - Timestep: We control the robot at 1Khz (PD controller) and we give a new control(q_des,v_des) at 50 hz.
+        self._robot_ID = p.loadURDF(SOLO_NAME, self._robot_start_pos, self._robot_start_orientation, useFixedBase=useFixedBase)
+        # Pybullet settings
         p.setTimeStep(DT, self.client)
-        # - gravity
         p.setGravity(0, 0, -9.81)
         # - Get joints to control (with motors)
         non_controlled_joints = [ "FL_ANKLE", "FR_ANKLE", "HL_ANKLE", "HR_ANKLE" ] # These joints are just used to get info (pos/vel/ori?)
-        self.all_joints_name = [p.getJointInfo(self._robot_ID, i)[1].decode() for i in range(p.getNumJoints(self._robot_ID))] # Name of all joints
+        self.all_joints_names = [p.getJointInfo(self._robot_ID, i)[1].decode() for i in range(p.getNumJoints(self._robot_ID))] # Name of all joints
         self.all_joints   = [i for i in range(p.getNumJoints(self._robot_ID))] # Indices of all joints : 12 for solo8 / 16 for solo 12
-        self.controlled_joints = [i for (i, n) in enumerate(self.all_joints_name) if n not in non_controlled_joints] # Indices of controlled joints
+        self.controlled_joints = [i for (i, n) in enumerate(self.all_joints_names) if n not in non_controlled_joints] # Indices of controlled joints
         # Force controlled joints bound
         _HAA_bounds = [-1,1]
         _HFE_bounds = [-1.5,1.5]
@@ -291,6 +291,7 @@ class Solo:
 
     # ============================================================================================
 
+    # TEST : Run the simulation and move the robot to default position.
     @staticmethod
     def _run_test():
         from Robots.ressources.plane import Plane
@@ -311,6 +312,8 @@ class Solo:
                 i=0
         pass
 
+
+    # TEST : Run the simulation and test the reset.
     @staticmethod
     def _run_test_reset():
         from Robots.ressources.plane import Plane
@@ -352,10 +355,12 @@ class Solo:
                 i=0
         pass
 
+
+    # TEST : Show the limit of each joints one by one (bounds: Robot.joints_bound_pos).
     @staticmethod
     def _run_test_joints_limit():
         from Robots.ressources.plane import Plane
-        robot = Solo(Plane, GUI=True)
+        robot = Solo(Plane, GUI=True, useFixedBase=True)
         # Move robot to default position
         if SOLO_NAME=="solo12.urdf":
             q_des = np.array([0.0, 0.7, -1.4, 0.0, 0.7, -1.4, 0.0, -0.7, 1.4, 0.0, -0.7, 1.4]) # Position default for solo 12
@@ -373,7 +378,7 @@ class Solo:
         # Test bounds of each joint
         input("Start test for each joint ... (press key)")
         for index_joint, bound in enumerate(robot.joints_bound_pos):
-            print("==== Joint ",index_joint," : ")
+            print("==== Joint ",index_joint," : ",robot.all_joints_names[robot.controlled_joints[index_joint]])
             for j in range(2): # Min and Max
                 value = bound[j]
                 print("value tested = ",value)

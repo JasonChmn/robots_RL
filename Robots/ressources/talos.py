@@ -7,19 +7,21 @@ import time
 
 PATH_URDF = "/opt/openrobots/share/example-robot-data/robots/talos_data/robots"
 
-HIGH_GAINS = True
+HIGH_GAINS = False  # Two setup for GAINS. The high gains are the one used by Gepetto team. But in RL, we have to lower it (keep False) => To tune.
 
-MAX_TORQUES = 300. # Knee 300, Legs 160-200, Shoulder 22-44, 
-DIVIDE_BOUNDS_TORQUES = 8.0 # Used when control in torques, lower the torques bounds for controlled joints => To tune
+MAX_TORQUES = 300. # Knee 300, Legs 160-200, Shoulder 22-44 => To tune.
+DIVIDE_BOUNDS_TORQUES = 8.0 # Used with torque control, lower the torques bounds for controlled joints => To tune.
 
 if HIGH_GAINS:
-    FREQUENCY_TALOS_HZ  = 2000          # 5 khz
+    # Parameters used in GEPETTO
+    FREQUENCY_TALOS_HZ  = 5000          # 5 khz
     DT = 1/FREQUENCY_TALOS_HZ
     FREQUENCY_UPDATE_CONTROL_HZ  = 50   # 50hz
     DT_PD = 1/FREQUENCY_UPDATE_CONTROL_HZ
     MULTIPLY_ALL_GAINS_P = 10.
     MULTIPLY_ALL_GAINS_D = 1.
 else:
+    # Parameters used for RL
     FREQUENCY_TALOS_HZ  = 2000          # 2khz
     DT = 1/FREQUENCY_TALOS_HZ
     FREQUENCY_UPDATE_CONTROL_HZ  = 50   # 50hz
@@ -27,11 +29,9 @@ else:
     MULTIPLY_ALL_GAINS_P = 1.
     MULTIPLY_ALL_GAINS_D = 1.
 
-GRAVITY = [0,0,-9.81]
-
 class Talos:
 
-    def __init__(self, class_terrain, GUI=False):
+    def __init__(self, class_terrain, GUI=False, useFixedBase=False):
         # Client : GUI (Graphical User Interface to check your results) / SHARED_MEMORY (for training with multiprocessing)
         if GUI:
             self.client = p.connect(p.GUI)
@@ -39,7 +39,7 @@ class Talos:
             self.client = p.connect(p.DIRECT)
         # Pybullet settings
         p.setTimeStep(DT)
-        p.setGravity (GRAVITY[0], GRAVITY[1], GRAVITY[2])
+        p.setGravity(0, 0, -9.81)
         # Load terrain
         self.terrain = class_terrain()
         # Robot positon and orientation at init
@@ -47,7 +47,7 @@ class Talos:
         self._robot_start_orientation = p.getQuaternionFromEuler([0, 0, 0])
         # Load Talos
         p.setAdditionalSearchPath(PATH_URDF)
-        self._robot_ID = p.loadURDF("talos_reduced.urdf",self._robot_start_pos, self._robot_start_orientation, useFixedBase=False)
+        self._robot_ID = p.loadURDF("talos_reduced.urdf",self._robot_start_pos, self._robot_start_orientation, useFixedBase=useFixedBase)
         # Joints indices
         self.controlled_joints, self.all_joints_names, self.all_joints = self._getcontrolled_joints() # indices of controlled joints
         self.non_controlled_joints_to_reset = [21,38] # gripper_left_joint and gripper_right_joint
@@ -236,7 +236,7 @@ class Talos:
     # ====================================================================================================================
 
 
-    # Compute PD torques.
+    # Compute torques from PD.
     # @input
     # - q_des : list of desired joint angles
     # - q_mes : list of mesured joint angles
@@ -408,6 +408,9 @@ class Talos:
         v_mes = [state[1] for state in joint_states]
         return q_mes, v_mes
 
+    # ============================================================================================
+
+    # TEST : Run the simulation and move the robot to default position.
     @staticmethod
     def _run_test():
         from Robots.ressources.plane import Plane
@@ -433,7 +436,7 @@ class Talos:
                 i=0
     
 
-
+    # TEST : Run the simulation and test the reset.
     @staticmethod
     def _run_test_reset():
         from Robots.ressources.plane import Plane
@@ -483,4 +486,54 @@ class Talos:
             if i%counter_reset==0: 
                 robot.reset()
                 i=0
+        pass
+
+
+    # TEST : Show the limit of each joints one by one (bounds: Robot.joints_bound_pos).
+    @staticmethod
+    def _run_test_joints_limit():
+        from Robots.ressources.plane import Plane
+        robot = Talos(Plane, GUI=True, useFixedBase=True)
+        # Move robot to default position
+        q_des = [   0.00000e+00, 6.76100e-03, # Torso
+                    0.00000e+00, 0.00000e+00, # Head
+                    2.58470e-01,1.73046e-01,-2.00000e-04,-5.25366e-01,0.00000e+00,0.00000e+00,1.00000e-01, # Left arm
+                    -2.58470e-01,-1.73046e-01, 2.00000e-04,-5.25366e-01, 0.00000e+00, 0.00000e+00, 1.00000e-01, # Right arm
+                    0.00000e+00, 0.00000e+00,-4.11354e-01, 8.59395e-01,-4.48041e-01,-1.70800e-03, # Left leg
+                    0.00000e+00, 0.00000e+00,-4.11354e-01, 8.59395e-01,-4.48041e-01,-1.70800e-03  # Right leg
+                ]
+        v_des = np.array([0.]*len(robot.controlled_joints))
+        i = 0
+        counter = 50
+        done = False
+        while not done:
+            robot.moveRobot(q_des, v_des, real_time=True, printInfos=False)
+            i+=1
+            if i%counter==0: 
+                done = True
+        # Test bounds of each joint
+        input("Start test for each joint ... (press key)")
+        for index_joint, bound in enumerate(robot.joints_bound_pos):
+            print("==== Joint ",index_joint," : ", robot.all_joints_names[robot.controlled_joints[index_joint]])
+            for j in range(2): # Min and Max
+                value = bound[j]
+                print("value tested = ",value)
+                q_des_aux = q_des.copy()
+                q_des_aux[index_joint] = value
+                i = 0
+                done = False
+                while not done:
+                    robot.moveRobot(q_des_aux, v_des, real_time=True)
+                    i+=1
+                    if i%counter==0:
+                        done = True
+                        input("Press key...")
+                # Reset to default position
+                i = 0
+                done = False
+                while not done:
+                    robot.moveRobot(q_des, v_des, real_time=True)
+                    i+=1
+                    if i%counter==0:
+                        done = True
         pass

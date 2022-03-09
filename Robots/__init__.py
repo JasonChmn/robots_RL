@@ -8,6 +8,6 @@ register(
 
 register(
      id='env_robot-v1',
-     entry_point='Robots.envs:Env_torques',
+     entry_point='Robots.envs:Env_torque',
      max_episode_steps=1500,
 )

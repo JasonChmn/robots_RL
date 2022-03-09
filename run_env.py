@@ -3,17 +3,16 @@ from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common import make_vec_env
 from stable_baselines import PPO2
-
 import gym
 
-#MODE_CONTROL = "PD"
-MODE_CONTROL = "TORQUES"
-if MODE_CONTROL=="PD":
+from Robots.ressources.config import Config
+if Config.MODE_CONTROL=="PD":
     from Robots.envs.env_PD import Env_PD as Env
-    ENV_ROBOT_ID = 'env_robot-v0' # Name in Robots/__init__.py
-elif MODE_CONTROL=="TORQUES":
-    from Robots.envs.env_torques import Env_torques as Env
-    ENV_ROBOT_ID = 'env_robot-v1' # Name in Robots/__init__.py
+elif Config.MODE_CONTROL=="TORQUE":
+    from Robots.envs.env_torque import Env_torque as Env
+else:
+    input("ERROR, NO CONTROL SELECTED IN CONFIG...")
+
 
 # For multiprocessing
 from stable_baselines.common import set_global_seeds
@@ -31,6 +30,9 @@ def make_env(env_id, rank, seed=0):
     set_global_seeds(seed)
     return _init
 
+
+# ===========================================================================================
+
 def train():
     n_procs = 8
     if n_procs == 1:
@@ -38,7 +40,6 @@ def train():
         env = [lambda: gym.make(ENV_ROBOT_ID)]
         print("env: ",env)
         envVec = DummyVecEnv(env)
-
     else:
         env = [make_env(ENV_ROBOT_ID, i) for i in range(n_procs)]
         envVec = SubprocVecEnv(env, start_method='spawn')
@@ -55,6 +56,7 @@ def train():
     #del model
     env.close()
     pass
+
 
 def play(path_model=None):
     env = Env(GUI=True)
@@ -78,15 +80,15 @@ def play(path_model=None):
     pass
 
 
+# ===========================================================================================
+
 if __name__ == "__main__":
-    # Basic tests
-    #Env._run_test_env()
-    #Env._run_test_solo()
-    #Env._run_test_talos()
-    # Other tests
-    #Env._run_test_reset_solo()
-    #Env._run_test_reset_talos()
-    #Env._run_test_joints_solo()
+    # TEST - environment, move robot with null action
+    Env._run_test_env()
+    # TEST - on robot class
+    #Env._run_test_robot()        # Move to default position.
+    #Env._run_test_robot_reset()  # Check if the robot is reset correctly after each episode.
+    #Env._run_test_robot_joints() # Check bounds for each controllable joint of the robot
     
     # Train or play
     TRAIN = False
