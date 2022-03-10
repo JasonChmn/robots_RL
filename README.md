@@ -61,9 +61,10 @@ Env._run_test_robot_joints() # Check bounds for each controllable joint of the r
 ```
 
 ## PLAY or TRAIN
-To train the robot : set ``TRAIN`` to ``True``.
+To train the robot : set ``TRAIN = True``.
+
 To play a trained policy : 
-- set ``TRAIN`` to ``True``.
+- set ``TRAIN = False``.
 - model_name = PATH_TO_YOUR_MODEL (example : "logs/model__880000_steps")
 
 ## REINFORCEMENT LEARNING
