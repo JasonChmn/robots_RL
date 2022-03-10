@@ -35,13 +35,13 @@ Modify all the parameters in env0.py in function of the RL task to perform.
 - ``reset()`` : Reset the robot position/orientation and forces applied on it. The robot's starting configuration is defined by parameters ``_robot_start_pos`` and ```_robot_start_orientation``.
 - ``moveRobot()`` : Use the PD controller on the robot for q_des qnd v_des. 
                 Each call of this function runs the PD controller for 1/FREQUENCY_UPDATE_CONTROL_HZ seconds.
-                The PD controller computes the torques and apply it on the robot every 1/FREQUENCY_TALOS_HZ seconds (or 1/FREQUENCY_SOLO_HZ).
-                Example for FREQUENCY_UPDATE_CONTROL_HZ=2000 and FREQUENCY_UPDATE_CONTROL_HZ=50 :
-                moveRobot() for 1/50=0.02s with an update of torques every 1/2000=0.0005sec.
+                The PD controller computes the torques and apply it on the robot every ``1/FREQUENCY_TALOS_HZ`` seconds (or ``1/FREQUENCY_SOLO_HZ``).
+                Example for ``FREQUENCY_UPDATE_CONTROL_HZ=2000`` and ``FREQUENCY_UPDATE_CONTROL_HZ=50`` :
+                moveRobot() for ``1/50=0.02 sec`` with an update of torques every ``1/2000=0.0005 sec``.
 - ``moveRobot_torques`` : use the torque controller on the robot.
 -               Each call of this functions runs the torque controller for 1/FREQUENCY_UPDATE_CONTROL_HZ seconds.
 -               It applies constant torques on the robot for all this duration.
--               The same torque is re-applied every 1/FREQUENCY_TALOS_HZ (or 1/FREQUENCY_SOLO_HZ) seconds (I do not know if setting a high value has an impact?).
+-               The same torque is re-applied every ``1/FREQUENCY_TALOS_HZ`` (or ``1/FREQUENCY_SOLO_HZ``) seconds (I do not know if setting a high value has an impact?).
 - ``getJointsState()``  : Return q_mes and v_mes of all joints.
 - ``getJointsBounds()`` : Return bounds for q_mes and v_mes of all joints.
 - ``getControlledJointsState()``  : Return q_mes and v_mes of controlled joints.
