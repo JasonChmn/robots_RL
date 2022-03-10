@@ -50,13 +50,6 @@ Modify all the parameters in env0.py in function of the RL task to perform.
 - ``getBasePosOri()`` : Return base position and orientation.
 - ``getBaseVel()``    : Return base linear and angular velocity.
 
-###Examples
-All these examples can be found in the main of respective classes.
-The code to run the RL algorithm: to learn a new policy and play it can be found in run_env.py.
-The hyperparameters used for PPO need to be tuned.
-
-
-
 ## TESTS on both robots (in run_env.py)
 ```
 # TEST - environment
