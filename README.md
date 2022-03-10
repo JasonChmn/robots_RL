@@ -60,7 +60,7 @@ Env._run_test_robot_reset()  # Check if the robot is reset correctly after each 
 Env._run_test_robot_joints() # Check bounds for each controllable joint of the robot
 ```
 
-## PLAY or TRAIN
+## PLAY or TRAIN (in run_env.py)
 To train the robot : set ``TRAIN = True``.
 
 To play a trained policy : 
