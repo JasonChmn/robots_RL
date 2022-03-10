@@ -90,8 +90,8 @@ For both control modes, this task is performed in ~1M steps with 8 parallel work
 - Tune : Gains P/D, Frequencies, TRESHOLD_DEAD, NB_MAX_STEPS
 
 ## PAPERS
-Emergence of Locomotion Behaviours in Rich Environments : https://arxiv.org/abs/1707.02286 (video: https://www.youtube.com/watch?v=hx_bgoTF7bs&ab_channel=DeepMind)
-DeepLoco : https://www.cs.ubc.ca/~van/papers/2017-TOG-deepLoco/
-DeepGait : https://arxiv.org/abs/1909.08399
-Learning Locomotion Skills Using DeepRL: Does the Choice of Action Space Matter? : https://arxiv.org/abs/1611.01055
-Torque control in RL : https://open.library.ubc.ca/soa/cIRcle/collections/ubctheses/24/items/1.0383251
+-Emergence of Locomotion Behaviours in Rich Environments : https://arxiv.org/abs/1707.02286 (video: https://www.youtube.com/watch?v=hx_bgoTF7bs&ab_channel=DeepMind)
+-DeepLoco : https://www.cs.ubc.ca/~van/papers/2017-TOG-deepLoco/
+-DeepGait : https://arxiv.org/abs/1909.08399
+-Learning Locomotion Skills Using DeepRL: Does the Choice of Action Space Matter? : https://arxiv.org/abs/1611.01055
+-Torque control in RL : https://open.library.ubc.ca/soa/cIRcle/collections/ubctheses/24/items/1.0383251
