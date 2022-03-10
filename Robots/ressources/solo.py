@@ -5,6 +5,8 @@ import pybullet_data
 import example_robot_data
 import time
 
+from Robots.ressources.config import Config
+
 PATH_URDF = "/opt/openrobots/share/example-robot-data/robots/solo_description/robots"
 SOLO_NAME = "solo.urdf"      # This is solo8  : 2 motors per leg only and no shoulder
 #SOLO_NAME = "solo12.urdf"    # This is solo12 : 2 motors per leg + all shoulders
@@ -13,8 +15,9 @@ HIGH_GAINS = False # Two setup for GAINS. The high gains are the one used by Gep
 
 FORCE_CONTROLLED_JOINTS_BOUND = True # False: use bounds from URDF ~[-10*pi,10*pi] / True: Lower these bounds for RL (Keep True).
 
-MAX_TORQUES = 8.0 # Set a maximum value for torques => Value to tune.
-DIVIDE_BOUNDS_TORQUES = 3.0 # Used with torque control, lower the bounds of torques for controlled joints => Value to tune.
+# For MAX_TORQUES=2 and DIVIDE_BOUNDS_TORQUES=4 => The max torques possible will be 2/4=0.5.
+MAX_TORQUES = 0.5 # Set a maximum value for torques => Value to tune.
+DIVIDE_BOUNDS_TORQUES = 1.0 # Used with torque control, lower the bounds of torques for controlled joints => Value to tune.
 
 if HIGH_GAINS:
     # Parameters used in GEPETTO
@@ -26,12 +29,21 @@ if HIGH_GAINS:
     GAINS_D_ALL = 0.3
 else:
     # Parameters used for RL
+    GAINS_P_ALL = 3.0  # Gains are the same for every joints
+    GAINS_D_ALL = 0.07
     FREQUENCY_SOLO_HZ  = 1000           # 1khz
     DT = 1/FREQUENCY_SOLO_HZ
     FREQUENCY_UPDATE_CONTROL_HZ  = 50   # 50hz
     DT_PD = 1/FREQUENCY_UPDATE_CONTROL_HZ
-    GAINS_P_ALL = 3.0  # Gains are the same for every joints
-    GAINS_D_ALL = 0.07
+    if Config.MODE_CONTROL=="TORQUE":
+        # Paper : "A Comparison of Action Spaces for Learning Manipulation Tasks"
+        # The policies were queried at 10Hz, and the low-level controllers operated at 100Hz across all experiments.
+        # READ THIS : https://open.library.ubc.ca/soa/cIRcle/collections/ubctheses/24/items/1.0383251
+        # We do the same.
+        FREQUENCY_SOLO_HZ  = 100
+        DT = 1/FREQUENCY_SOLO_HZ
+        FREQUENCY_UPDATE_CONTROL_HZ  = 100
+        DT_TORQUES = 1/FREQUENCY_UPDATE_CONTROL_HZ
 
 class Solo:
 
@@ -53,7 +65,7 @@ class Solo:
         # Load terrain
         self.terrain = class_terrain()
         # Load robot
-        self._robot_start_pos = [0,0,0.5]
+        self._robot_start_pos = [0,0,0.45]
         self._robot_start_orientation = p.getQuaternionFromEuler([0,0,0])
         p.setAdditionalSearchPath(PATH_URDF)
         self._robot_ID = p.loadURDF(SOLO_NAME, self._robot_start_pos, self._robot_start_orientation, useFixedBase=useFixedBase)
@@ -210,12 +222,12 @@ class Solo:
                     pass
         return None
 
-    def moveRobot_torques(self, torques, real_time=True, printInfos=False):
+    def moveRobot_torques(self, torques, real_time=True, print_info=False):
         time_simulation = 0.0
-        if printInfos:
-            print("torques : ",np.round(torques,1))
+        if print_info:
+            print("torques : ",np.round(torques,2))
         # "Constant torques are applied for the duration of a control step" as in : https://arxiv.org/pdf/1611.01055.pdf
-        while time_simulation<DT_PD:
+        while time_simulation<DT_TORQUES:
             if real_time: 
                 t_start = time.time()
             # Apply torques on robot
@@ -242,7 +254,8 @@ class Solo:
     # - torques : torques to apply on joints
     def _computePDTorques(self, q_des, q_mes, v_des, v_mes):
         torques = self.gains_P * (q_des - q_mes) + self.gains_D * (v_des - v_mes)
-        torques = np.array([min(t,MAX_TORQUES) for t in torques])
+        torques = np.array([np.copysign(min(abs(t),MAX_TORQUES),t) for t in torques])
+        #print(torques)
         return torques
 
 
@@ -274,7 +287,6 @@ class Solo:
     # ============================================================================================
 
     # Get max torques possible for each joint. We do not consider joints velocity.
-    # Formula : torques =
     def _get_max_torques_joints(self, joint_indices):
         # Compute list of torques from min to max joint positions
         min_pos_joints = [ self.joints_bound_pos_all[i][0] for i in joint_indices ]
@@ -286,7 +298,8 @@ class Solo:
         # Compute torques bounds
         joints_bound_torques = []
         for i in range(len(joint_indices)):
-            joints_bound_torques.append( [-max_torques[i]/DIVIDE_BOUNDS_TORQUES, max_torques[i]/DIVIDE_BOUNDS_TORQUES] )
+            joints_bound_torques.append( [-abs(max_torques[i])/DIVIDE_BOUNDS_TORQUES, abs(max_torques[i])/DIVIDE_BOUNDS_TORQUES] )
+        #print(joints_bound_torques)
         return joints_bound_torques
 
     # ============================================================================================

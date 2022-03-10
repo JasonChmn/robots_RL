@@ -9,8 +9,9 @@ PATH_URDF = "/opt/openrobots/share/example-robot-data/robots/talos_data/robots"
 
 HIGH_GAINS = False  # Two setup for GAINS. The high gains are the one used by Gepetto team. But in RL, we have to lower it (keep False) => To tune.
 
-MAX_TORQUES = 300. # Knee 300, Legs 160-200, Shoulder 22-44 => To tune.
-DIVIDE_BOUNDS_TORQUES = 8.0 # Used with torque control, lower the torques bounds for controlled joints => To tune.
+# For MAX_TORQUES=2 and DIVIDE_BOUNDS_TORQUES=4 => The max torques possible will be 2/4=0.5.
+MAX_TORQUES = 100. # Knee 300, Legs 160-200, Shoulder 22-44 => To tune.
+DIVIDE_BOUNDS_TORQUES = 2.0 # Used with torque control, lower the torques bounds for controlled joints => To tune.
 
 if HIGH_GAINS:
     # Parameters used in GEPETTO
@@ -28,6 +29,15 @@ else:
     DT_PD = 1/FREQUENCY_UPDATE_CONTROL_HZ
     MULTIPLY_ALL_GAINS_P = 1.
     MULTIPLY_ALL_GAINS_D = 1.
+    if Config.MODE_CONTROL=="TORQUE":
+        # Paper : "A Comparison of Action Spaces for Learning Manipulation Tasks"
+        # The policies were queried at 10Hz, and the low-level controllers operated at 100Hz across all experiments.
+        # READ THIS : https://open.library.ubc.ca/soa/cIRcle/collections/ubctheses/24/items/1.0383251
+        # We do the same.
+        FREQUENCY_TALOS_HZ  = 200
+        DT = 1/FREQUENCY_SOLO_HZ
+        FREQUENCY_UPDATE_CONTROL_HZ  = 200
+        DT_TORQUES = 1/FREQUENCY_UPDATE_CONTROL_HZ
 
 class Talos:
 
@@ -131,9 +141,9 @@ class Talos:
                     pass
         pass
 
-    def moveRobot_torques(self, torques, real_time=True, printInfos=False):
+    def moveRobot_torques(self, torques, real_time=True, print_info=False):
         time_simulation = 0.0
-        if printInfos:
+        if print_info:
             print("torques : ",np.round(torques,1))
         # "Constant torques are applied for the duration of a control step" as in : https://arxiv.org/pdf/1611.01055.pdf
         while time_simulation<DT_PD:
@@ -156,7 +166,6 @@ class Talos:
     # ============================================================================================
 
     # Get max torques possible for each joint. We do not consider joints velocity.
-    # Formula : torques =
     def _get_max_torques_joints(self, joint_indices):
         # Compute list of torques from min to max joint positions
         min_pos_joints = [ self.joints_bound_pos_all[i][0] for i in joint_indices ]
@@ -168,7 +177,8 @@ class Talos:
         # Compute torques bounds
         joints_bound_torques = []
         for i in range(len(joint_indices)):
-            joints_bound_torques.append( [-max_torques[i]/DIVIDE_BOUNDS_TORQUES, max_torques[i]/DIVIDE_BOUNDS_TORQUES] )
+            joints_bound_torques.append( [-abs(max_torques[i])/DIVIDE_BOUNDS_TORQUES, abs(max_torques[i])/DIVIDE_BOUNDS_TORQUES] )
+        #print(joints_bound_torques)
         return joints_bound_torques
 
     # ================================================================
@@ -236,7 +246,7 @@ class Talos:
     # ====================================================================================================================
 
 
-    # Compute torques from PD.
+    # Compute PD torques.
     # @input
     # - q_des : list of desired joint angles
     # - q_mes : list of mesured joint angles
@@ -245,8 +255,9 @@ class Talos:
     # @output
     # - torques : torques to apply on joints
     def _computePDTorques(self, q_des, q_mes, v_des, v_mes):
-        torques = self.gains_P_controlled * (q_des - q_mes) * MULTIPLY_ALL_GAINS_P + self.gains_D_controlled * (v_des - v_mes) * MULTIPLY_ALL_GAINS_D
-        torques = np.array([min(t,MAX_TORQUES) for t in torques])
+        torques = self.gains_P * (q_des - q_mes) + self.gains_D * (v_des - v_mes)
+        torques = np.array([np.copysign(min(abs(t),MAX_TORQUES),t) for t in torques])
+        #print(torques)
         return torques
 
 
